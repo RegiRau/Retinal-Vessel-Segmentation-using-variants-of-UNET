@@ -23,7 +23,7 @@ path2 = 'M:\Regine Rausch/05 Data/04 Data Set/04_Vein_Dataset\labels'
 image_dataset = []
 mask_dataset = []
 
-with_patches = True
+with_patches = False
 
 if with_patches:
 
@@ -76,7 +76,7 @@ else:
     SIZE_X = 1632
     SIZE_Y = 1216
     images = sorted(os.listdir(path1))
-    for i, image_name in enumerate(images):
+    for i, image_name in enumerate(images[:12]):
        image = cv2.imread(path1 + '/' + image_name, 0)
        image = clahe_equalized(image) #applying CLAHE
        image = cv2.resize(image, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
@@ -84,7 +84,7 @@ else:
        image_dataset.append(image)
 
     masks = sorted(os.listdir(path2))
-    for i, mask_name in enumerate(masks):
+    for i, mask_name in enumerate(masks[:12]):
         mask = cv2.imread(path2 + '/' + mask_name, 0)
         mask = cv2.resize(mask, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
         mask[mask < 200] = 0
