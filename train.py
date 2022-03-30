@@ -17,8 +17,8 @@ def clahe_equalized(imgs):
 # path1 = '../healthy'              #training images directory path
 # path2 = '../healthy_manualsegm'   #training images directory path
 
-path1 = 'M:\Regine Rausch/05 Data/04 Data Set/04_Vein_Dataset\images'
-path2 = 'M:\Regine Rausch/05 Data/04 Data Set/04_Vein_Dataset\labels'
+path1 = "04_Vein_Dataset/images"
+path2 = '04_Vein_Dataset/labels'
 
 image_dataset = []
 mask_dataset = []
@@ -101,6 +101,7 @@ mask_dataset =  np.array(mask_dataset)
 image_dataset = np.expand_dims(image_dataset,axis=-1)
 mask_dataset =  np.expand_dims(mask_dataset,axis=-1)
 
+print('built dataset')
 
 #importing models
 from model import unetmodel, residualunet, attentionunet, residual_attentionunet
@@ -125,13 +126,18 @@ model.compile(optimizer = Adam(learning_rate = 1e-3), loss= IoU_loss, metrics= [
 from sklearn.model_selection import train_test_split
 x_train, x_test, y_train, y_test = train_test_split(image_dataset, mask_dataset, test_size=0.3, random_state=0)
 
+np.save('train_test_split/x_train.npy', x_train)
+np.save('train_test_split/y_train.npy', y_train)
+np.save('train_test_split/x_test.npy', x_test)
+np.save('train_test_split/y_test.npy', y_test)
+
 #train model
 history = model.fit(x_train, y_train, 
                     verbose=1,
-                    batch_size = 16,
+                    batch_size = 2,
                     validation_data=(x_test, y_test ), 
                     shuffle=False,
-                    epochs=150)
+                    epochs=10)
 
 #training-validation loss curve
 loss = history.history['loss']
