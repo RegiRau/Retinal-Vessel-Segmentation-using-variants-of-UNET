@@ -5,62 +5,97 @@ import skimage.io
 from matplotlib import pyplot as plt
 from patchify import patchify
 from PIL import Image
-np.random.seed(0) 
+np.random.seed(0)
 
 
 #CLAHE
-def clahe_equalized(imgs):    
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))    
+def clahe_equalized(imgs):
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     imgs_equalized = clahe.apply(imgs)
     return imgs_equalized
 
-path1 = 'M:\Regine Rausch/05 Data/05 Segmentation Network/healthy'              #training images directory path
-path2 = 'M:\Regine Rausch/05 Data/05 Segmentation Network/healthy_manualsegm'   #training images directory path
-# path1 = '/content/drive/MyDrive/training/images' #training images directory
-# path2 = '/content/drive/MyDrive/training/masks' #training masks directory
+# path1 = '../healthy'              #training images directory path
+# path2 = '../healthy_manualsegm'   #training images directory path
+
+path1 = 'M:\Regine Rausch/05 Data/04 Data Set/04_Vein_Dataset\images'
+path2 = 'M:\Regine Rausch/05 Data/04 Data Set/04_Vein_Dataset\labels'
 
 image_dataset = []
 mask_dataset = []
 
-patch_size = 512
+with_patches = True
 
-images = sorted(os.listdir(path1))
-for i, image_name in enumerate(images):
-   if image_name.endswith(".jpg"):                   
-       image = skimage.io.imread(path1+"/"+image_name)  #Read image
-       image = image[:,:,1] #selecting green channel
+if with_patches:
+
+    patch_size = 512
+
+    images = sorted(os.listdir(path1))
+    for i, image_name in enumerate(images):
+       #if image_name.endswith(".jpg"):
+       #image = skimage.io.imread(path1+"/"+image_name)  #Read image
+       image = cv2.imread(path1 + '/' + image_name, 0)
+       #image = image[:,:,1] #selecting green channel
        image = clahe_equalized(image) #applying CLAHE
        SIZE_X = (image.shape[1]//patch_size)*patch_size #getting size multiple of patch size
        SIZE_Y = (image.shape[0]//patch_size)*patch_size #getting size multiple of patch size
-       image = Image.fromarray(image)        
-       image = image.resize((SIZE_X, SIZE_Y)) #resize image       
-       image = np.array(image) 
+       image = Image.fromarray(image)
+       image = image.resize((SIZE_X, SIZE_Y)) #resize image
+       image = np.array(image)
        patches_img = patchify(image, (patch_size, patch_size), step=patch_size)  #create patches(patch_sizexpatch_sizex1)
-            
+
        for i in range(patches_img.shape[0]):
-           for j in range(patches_img.shape[1]):                        
-               single_patch_img = patches_img[i,j,:,:]                 
-               single_patch_img = (single_patch_img.astype('float32')) / 255.                    
+           for j in range(patches_img.shape[1]):
+               single_patch_img = patches_img[i,j,:,:]
+               single_patch_img = (single_patch_img.astype('float32')) / 255.
                image_dataset.append(single_patch_img)
 
-masks = sorted(os.listdir(path2))  
-for i, mask_name in enumerate(masks):  
-    # if mask_name.endswith(".jpg"):
-    #     mask = skimage.io.imread(path2+"/"+mask_name)   #Read masks
-    mask = skimage.io.imread(path2 + '/' + mask_name, plugin='pil')
-    SIZE_X = (mask.shape[1]//patch_size)*patch_size #getting size multiple of patch size
-    SIZE_Y = (mask.shape[0]//patch_size)*patch_size #getting size multiple of patch size
-    mask = Image.fromarray(mask)
-    mask = mask.resize((SIZE_X, SIZE_Y))  #resize image
-    mask = np.array(mask)
-    patches_mask = patchify(mask, (patch_size, patch_size), step=patch_size)  #create patches(patch_sizexpatch_sizex1)
+    masks = sorted(os.listdir(path2))
+    for i, mask_name in enumerate(masks):
+        # if mask_name.endswith(".jpg"):
+        #     mask = skimage.io.imread(path2+"/"+mask_name)   #Read masks
+        mask = cv2.imread(path2 + '/' + mask_name, 0)
+        #mask = skimage.io.imread(path2 + '/' + mask_name, plugin='pil')
+        SIZE_X = (mask.shape[1]//patch_size)*patch_size #getting size multiple of patch size
+        SIZE_Y = (mask.shape[0]//patch_size)*patch_size #getting size multiple of patch size
+        mask = Image.fromarray(mask)
+        mask = mask.resize((SIZE_X, SIZE_Y))  #resize image
+        mask = np.array(mask)
+        patches_mask = patchify(mask, (patch_size, patch_size), step=patch_size)  #create patches(patch_sizexpatch_sizex1)
 
-    for i in range(patches_mask.shape[0]):
-        for j in range(patches_mask.shape[1]):
-            single_patch_mask = patches_mask[i,j,:,:]
-            single_patch_mask = (single_patch_mask.astype('float32'))/255.
-            mask_dataset.append(single_patch_mask)
- 
+        for i in range(patches_mask.shape[0]):
+            for j in range(patches_mask.shape[1]):
+                single_patch_mask = patches_mask[i,j,:,:]
+                single_patch_mask = (single_patch_mask.astype('float32'))/255.
+                mask_dataset.append(single_patch_mask)
+
+    IMG_HEIGHT = patch_size
+    IMG_WIDTH = patch_size
+
+else:
+    # ohne patches:
+    SIZE_X = 1632
+    SIZE_Y = 1216
+    images = sorted(os.listdir(path1))
+    for i, image_name in enumerate(images):
+       image = cv2.imread(path1 + '/' + image_name, 0)
+       image = clahe_equalized(image) #applying CLAHE
+       image = cv2.resize(image, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
+       image = np.array(image, dtype="float32")
+       image_dataset.append(image)
+
+    masks = sorted(os.listdir(path2))
+    for i, mask_name in enumerate(masks):
+        mask = cv2.imread(path2 + '/' + mask_name, 0)
+        mask = cv2.resize(mask, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
+        mask[mask < 200] = 0
+        mask[mask >= 200] = 1
+        mask = np.array(mask, dtype="float32")
+        mask_dataset.append(mask)
+
+    IMG_HEIGHT = SIZE_Y
+    IMG_WIDTH = SIZE_X
+
+
 image_dataset = np.array(image_dataset)
 mask_dataset =  np.array(mask_dataset)
 image_dataset = np.expand_dims(image_dataset,axis=-1)
@@ -72,8 +107,7 @@ from model import unetmodel, residualunet, attentionunet, residual_attentionunet
 from tensorflow.keras.optimizers import Adam
 from evaluation_metrics import IoU_coef,IoU_loss
 
-IMG_HEIGHT = patch_size
-IMG_WIDTH = patch_size
+
 IMG_CHANNELS = 1
 input_shape = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
@@ -137,4 +171,4 @@ plt.legend()
 plt.show()
 
 #save model
-#model.save('/content/drive/MyDrive/training/retina_Unet_150epochs.hdf5')
+model.save('Veins_Trained_models/Veins_Attention_Unet_150epochs.hdf5')

@@ -4,6 +4,7 @@ import numpy as np
 import skimage.io
 from matplotlib import pyplot as plt
 from patchify import patchify, unpatchify
+import PIL
 np.random.seed(0)
 
 # CLAHE
@@ -27,16 +28,15 @@ input_shape = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
 model = attentionunet(input_shape) #/residualunet(input_shape)/unetmodel(input_shape)/attention_residualunet(input_shape)
 model.compile(optimizer = Adam(learning_rate = 1e-3), loss= IoU_loss, metrics= ['accuracy', IoU_coef])
-model.load_weights('M:\Regine Rausch/05 Data/05 Segmentation Network\Retinal-Vessel-Segmentation-using-variants-of-UNET'
-                   '\Trained models/retina_attentionUnet_150epochs.hdf5') #loading weights
+model.load_weights('Retina_Trained models/retina_attentionUnet_150epochs.hdf5') #loading weights
 #model.load_weights('/content/drive/MyDrive/training/retina_Unet_150epochs.hdf5') #loading weights
 
 
 # path1 = '/content/drive/MyDrive/training/images'    #test dataset images directory path
 # path2 = '/content/drive/MyDrive/training/masks'     #test dataset mask directory path
 
-path1 = 'M:\Regine Rausch/05 Data/05 Segmentation Network/healthy'              #test images directory path
-path2 = 'M:\Regine Rausch/05 Data/05 Segmentation Network/healthy_manualsegm'   #label images directory path
+path1 = '../healthy'              #test images directory path
+path2 = '../healthy_manualsegm'   #label images directory path
 #path2 = 'M:\Regine Rausch/05 Data/05 Segmentation Network/healthy_fovmask'      #test mask directory path
 
 
@@ -54,6 +54,7 @@ testmasks =  sorted(os.listdir(path2))
 for idx, image_name in enumerate(testimages):  
    if image_name.endswith(".jpg"):  
       predicted_patches = []
+      #test_img = skimage.io.imread('M:\Regine Rausch/05 Data/06 Labelme/01_Test_Data\Dataset_json/img.png')
       test_img = skimage.io.imread(path1+"/"+image_name)
      
       test = test_img[:,:,1] #selecting green channel
@@ -81,13 +82,15 @@ for idx, image_name in enumerate(testimages):
 
       groundtruth=[]
       groundtruth = skimage.io.imread(path2+'/'+testmasks[idx], plugin='pil') #reading mask of the test img
-      SIZE_X = (groundtruth.shape[1]//patch_size)*patch_size 
+      #groundtruth = cv2.imread('M:\Regine Rausch/05 Data/06 Labelme/01_Test_Data\Dataset_json/label.png', 0)
+      #groundtruth[groundtruth > 0] = 255 #groundtruth[groundtruth > 0] = 1
+      SIZE_X = (groundtruth.shape[1]//patch_size)*patch_size
       SIZE_Y = (groundtruth.shape[0]//patch_size)*patch_size  
       groundtruth = cv2.resize(groundtruth, (SIZE_X, SIZE_Y))  
       ground_truth.append(groundtruth)
 
-      y_true = groundtruth
-      y_pred = reconstructed_image
+      y_true = groundtruth # 0 - 255
+      y_pred = reconstructed_image  # 1 and 0
       labels = [0, 1]
       IoU = []  #Intersection over Union -> Schwellenwert, um zu ermitteln, ob ein vorhergesagtes Ergebnis ein
                 #True Positive oder ein False Positive ist
