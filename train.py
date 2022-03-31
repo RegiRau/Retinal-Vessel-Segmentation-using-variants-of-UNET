@@ -131,13 +131,18 @@ np.save('train_test_split/y_train.npy', y_train)
 np.save('train_test_split/x_test.npy', x_test)
 np.save('train_test_split/y_test.npy', y_test)
 
+import tensorflow as tf
+# for tensorboard
+logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
+
 #train model
 history = model.fit(x_train, y_train, 
                     verbose=1,
                     batch_size = 2,
                     validation_data=(x_test, y_test ), 
                     shuffle=False,
-                    epochs=10)
+                    epochs=10, callbacks=[tensorboard_callback])
 
 # #training-validation loss curve
 # loss = history.history['loss']
