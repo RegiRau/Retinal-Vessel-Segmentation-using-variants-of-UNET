@@ -28,11 +28,11 @@ input_shape = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
 model = attentionunet(input_shape)
 model.compile(optimizer = Adam(learning_rate = 1e-3), loss= IoU_loss, metrics= ['accuracy', IoU_coef])
-model.load_weights('Veins_Trained_models/Veins_Attention_Unet_12images_10epochs_01.hdf5') #loading weights
+model.load_weights('Veins_Trained_models/Veins_Attention_Unet_150epochs.hdf5') #loading weights
 
 
-path1 = "04_Vein_Dataset/images"
-path2 = '04_Vein_Dataset/labels'
+path1 = "../04_Vein_Dataset/images"
+path2 = '../04_Vein_Dataset/labels'
 
 testimages = sorted(os.listdir(path1))
 testmasks =  sorted(os.listdir(path2))
@@ -41,13 +41,20 @@ test = cv2.imread(path1 + '/' + testimages[14], 0)
 label = cv2.imread(path2 + '/' + testmasks[14], 0)
 
 test = clahe_equalized(test) #applying CLAHE
-test_res = cv2.resize(test, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
-test_res = np.array(test, dtype="float32")
+res_test = cv2.resize(test, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
+res_test = np.array(res_test)
 
-prediction = (model.predict(test_res)[0,:,:,0] > 0.5).astype(np.uint8) #predict on single patch
-prediction = np.array(prediction)
+test_img = (res_test.astype('float32')) / 255.
+test_img_norm = np.expand_dims(np.array(test_img), axis=-1)
+test_img_input = np.expand_dims(test_img_norm, 0)
+test_img_prediction = (model.predict(test_img_input)[0, :, :, 0] > 0.5).astype(
+    np.uint8)  # predict on single patch
 
 
 
-cv2.imwrite('prediction.png', prediction)
+test_img_prediction = np.array(test_img_prediction)
+
+
+cv2.imwrite('Test Image', test)
+cv2.imwrite('prediction.png', test_img_prediction)
 cv2.imwrite('label.png', label)

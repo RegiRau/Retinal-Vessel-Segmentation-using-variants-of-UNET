@@ -13,15 +13,16 @@ def clahe_equalized(imgs):
     imgs_equalized = clahe.apply(imgs)
     return imgs_equalized
 
-patch_size = 512
+SIZE_X = 1632
+SIZE_Y = 1216
 
 #loading model architectures
 from model import unetmodel, residualunet, attentionunet, residual_attentionunet
 from tensorflow.keras.optimizers import Adam
 from evaluation_metrics import IoU_coef,IoU_loss
 
-IMG_HEIGHT = patch_size
-IMG_WIDTH = patch_size
+IMG_HEIGHT = SIZE_Y
+IMG_WIDTH = SIZE_X
 IMG_CHANNELS = 1
 
 input_shape = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
@@ -35,10 +36,8 @@ model.load_weights('Retina_Trained models/retina_attentionUnet_150epochs.hdf5') 
 # path1 = '/content/drive/MyDrive/training/images'    #test dataset images directory path
 # path2 = '/content/drive/MyDrive/training/masks'     #test dataset mask directory path
 
-path1 = '../healthy'              #test images directory path
-path2 = '../healthy_manualsegm'   #label images directory path
-#path2 = 'M:\Regine Rausch/05 Data/05 Segmentation Network/healthy_fovmask'      #test mask directory path
-
+path1 = "../04_Vein_Dataset/images"
+path2 = "../04_Vein_Dataset/labels"
 
 from sklearn.metrics import jaccard_score,confusion_matrix
 
@@ -51,62 +50,47 @@ global_accuracy = []
 testimages = sorted(os.listdir(path1))
 testmasks =  sorted(os.listdir(path2))
 
-for idx, image_name in enumerate(testimages):  
-   if image_name.endswith(".jpg"):  
-      predicted_patches = []
-      #test_img = skimage.io.imread('M:\Regine Rausch/05 Data/06 Labelme/01_Test_Data\Dataset_json/img.png')
-      test_img = skimage.io.imread(path1+"/"+image_name)
-     
-      test = test_img[:,:,1] #selecting green channel
-      test = clahe_equalized(test) #applying CLAHE
-      SIZE_X = (test_img.shape[1]//patch_size)*patch_size #getting size multiple of patch size
-      SIZE_Y = (test_img.shape[0]//patch_size)*patch_size #getting size multiple of patch size
-      test = cv2.resize(test, (SIZE_X, SIZE_Y))
-      testimg.append(test)           
-      test = np.array(test)
+for idx, image_name in enumerate(testimages):
+    test_img = cv2.imread(path1 + '/' + image_name, 0)
+    test = clahe_equalized(test_img) #applying CLAHE
+    res_test = cv2.resize(test, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
+    res_test = np.array(res_test, dtype="float32")
+    testimg.append(res_test)
 
-      patches = patchify(test, (patch_size, patch_size), step=patch_size) #create patches(patch_sizexpatch_sizex1)
+    test_img = (res_test.astype('float32')) / 255.
+    test_img_norm = np.expand_dims(np.array(test_img), axis=-1)
+    test_img_input = np.expand_dims(test_img_norm, 0)
+    test_img_prediction = (model.predict(test_img_input)[0, :, :, 0] > 0.5).astype(
+        np.uint8)  # predict on single patch
 
-      for i in range(patches.shape[0]):
-                for j in range(patches.shape[1]):
-                  single_patch = patches[i,j,:,:]
-                  single_patch_norm = (single_patch.astype('float32')) / 255.
-                  single_patch_norm = np.expand_dims(np.array(single_patch_norm), axis=-1)
-                  single_patch_input = np.expand_dims(single_patch_norm, 0)
-                  single_patch_prediction = (model.predict(single_patch_input)[0,:,:,0] > 0.5).astype(np.uint8) #predict on single patch
-                  predicted_patches.append(single_patch_prediction)
-      predicted_patches = np.array(predicted_patches)
-      predicted_patches_reshaped = np.reshape(predicted_patches, (patches.shape[0], patches.shape[1], patch_size,patch_size) )
-      reconstructed_image = unpatchify(predicted_patches_reshaped, test.shape) #join patches to form whole img
-      prediction.append(reconstructed_image) 
+    prediction.append(test_img_prediction)
 
-      groundtruth=[]
-      groundtruth = skimage.io.imread(path2+'/'+testmasks[idx], plugin='pil') #reading mask of the test img
-      #groundtruth = cv2.imread('M:\Regine Rausch/05 Data/06 Labelme/01_Test_Data\Dataset_json/label.png', 0)
-      #groundtruth[groundtruth > 0] = 255 #groundtruth[groundtruth > 0] = 1
-      SIZE_X = (groundtruth.shape[1]//patch_size)*patch_size
-      SIZE_Y = (groundtruth.shape[0]//patch_size)*patch_size  
-      groundtruth = cv2.resize(groundtruth, (SIZE_X, SIZE_Y))  
-      ground_truth.append(groundtruth)
 
-      y_true = groundtruth # 0 - 255
-      y_pred = reconstructed_image  # 1 and 0
-      labels = [0, 1]
-      IoU = []  #Intersection over Union -> Schwellenwert, um zu ermitteln, ob ein vorhergesagtes Ergebnis ein
-                #True Positive oder ein False Positive ist
+    groundtruth = cv2.imread(path2 + '/' + testmasks[idx], 0)
+    groundtruth = cv2.resize(groundtruth, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
+    groundtruth[groundtruth < 200] = 0
+    groundtruth[groundtruth >= 200] = 255
+    groundtruth = np.array(groundtruth, dtype="uint8")
+    ground_truth.append(groundtruth)
 
-      for label in labels:
-          jaccard = jaccard_score(y_pred.flatten(),y_true.flatten(), pos_label=label, average='weighted')
-          IoU.append(jaccard)
-      IoU = np.mean(IoU) #jacard/IoU of single image
-      global_IoU.append(IoU)
+    y_true = groundtruth # 0 - 255
+    y_pred = test_img_prediction  # 1 and 0
+    labels = [0, 1]
+    IoU = []  #Intersection over Union -> Schwellenwert, um zu ermitteln, ob ein vorhergesagtes Ergebnis ein
+            #True Positive oder ein False Positive ist
 
-      cm=[]
-      accuracy = []
-      cm = confusion_matrix(y_true.flatten(),y_pred.flatten(), labels=[0, 1])
-      accuracy = (cm[0,0]+cm[1,1])/(cm[0,0]+cm[0,1]+cm[1,0]+cm[1,1]) #accuracy of single image
-        #cm[0,0]: true negatives, c[1,1]: true positives, c[1,0]: false negatives, c[0,1]: false positives
-      global_accuracy.append(accuracy)
+    for label in labels:
+      jaccard = jaccard_score(y_pred.flatten(),y_true.flatten(), pos_label=label, average='weighted')
+      IoU.append(jaccard)
+    IoU = np.mean(IoU) #jacard/IoU of single image
+    global_IoU.append(IoU)
+
+    cm=[]
+    accuracy = []
+    cm = confusion_matrix(y_true.flatten(),y_pred.flatten(), labels=[0, 1])
+    accuracy = (cm[0,0]+cm[1,1])/(cm[0,0]+cm[0,1]+cm[1,0]+cm[1,1]) #accuracy of single image
+    #cm[0,0]: true negatives, c[1,1]: true positives, c[1,0]: false negatives, c[0,1]: false positives
+    global_accuracy.append(accuracy)
 
 
 avg_acc =  np.mean(global_accuracy)
@@ -143,40 +127,38 @@ plt.show()
 #prediction on single image
 from datetime import datetime 
 reconstructed_image = []
-#test_img = skimage.io.imread('/content/drive/MyDrive/hrf/images/15_dr.jpg') #test image
-test_img = skimage.io.imread('M:\Regine Rausch/05 Data/05 Segmentation Network\healthy/01_h.jpg') #test image
+
+testimages = sorted(os.listdir(path1))
+testmasks =  sorted(os.listdir(path2))
+
+test = cv2.imread(path1 + '/' + testimages[14], 0)
+label = cv2.imread(path2 + '/' + testmasks[14], 0)
 
 predicted_patches = []
 start = datetime.now()   
 
-test = test_img[:,:,1] #selecting green channel
 test = clahe_equalized(test) #applying CLAHE
-SIZE_X = (test_img.shape[1]//patch_size)*patch_size #getting size multiple of patch size
-SIZE_Y = (test_img.shape[0]//patch_size)*patch_size #getting size multiple of patch size
-test = cv2.resize(test, (SIZE_X, SIZE_Y))        
-test = np.array(test)
-patches = patchify(test, (patch_size, patch_size), step=patch_size) #create patches(patch_sizexpatch_sizex1)
+res_test = cv2.resize(test, dsize=(SIZE_X, SIZE_Y), interpolation=cv2.INTER_CUBIC)
+res_test = np.array(res_test)
 
-for i in range(patches.shape[0]):
-      for j in range(patches.shape[1]):
-          single_patch = patches[i,j,:,:]
-          single_patch_norm = (single_patch.astype('float32')) / 255.
-          single_patch_norm = np.expand_dims(np.array(single_patch_norm), axis=-1)
-          single_patch_input = np.expand_dims(single_patch_norm, 0)
-          single_patch_prediction = (model.predict(single_patch_input)[0,:,:,0] > 0.5).astype(np.uint8) #predict on single patch
-          predicted_patches.append(single_patch_prediction)
-predicted_patches = np.array(predicted_patches)
-predicted_patches_reshaped = np.reshape(predicted_patches, (patches.shape[0], patches.shape[1], patch_size,patch_size) )
-reconstructed_image = unpatchify(predicted_patches_reshaped, test.shape) #join patches to form whole img
-
+test_img = (res_test.astype('float32')) / 255.
+test_img_norm = np.expand_dims(np.array(test_img), axis=-1)
+test_img_input = np.expand_dims(test_img_norm, 0)
+test_img_prediction = (model.predict(test_img_input)[0, :, :, 0] > 0.5).astype(
+    np.uint8)  # predict on single patch
 stop = datetime.now()
 print('Execution time: ',(stop-start)) #computation time
+
+test_shape = np.shape(test)
+
+res_prediction = cv2.resize(test, dsize=(test_shape), interpolation=cv2.INTER_CUBIC)
+
 
 plt.subplot(121)
 plt.title('Test Image')
 plt.xticks([])
 plt.yticks([])
-plt.imshow(test_img)
+plt.imshow(test)
 plt.subplot(122)
 plt.title('Prediction')
 plt.xticks([])
