@@ -1,4 +1,4 @@
-import os
+import datetime, os
 import cv2
 import numpy as np
 import skimage.io
@@ -177,4 +177,4 @@ history = model.fit(x_train, y_train,
 # plt.show()
 
 #save model
-model.save('Veins_Trained_models/Veins_Attention_Unet_150epochs.hdf5')
+model.save('Veins_Trained_models/Veins_Attention_Unet_12images_10epochs_02.hdf5')
