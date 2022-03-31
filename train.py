@@ -17,8 +17,8 @@ def clahe_equalized(imgs):
 # path1 = '../healthy'              #training images directory path
 # path2 = '../healthy_manualsegm'   #training images directory path
 
-path1 = "04_Vein_Dataset/images"
-path2 = '04_Vein_Dataset/labels'
+path1 = "../04_Vein_Dataset/images"
+path2 = "../04_Vein_Dataset/labels"
 
 image_dataset = []
 mask_dataset = []
@@ -139,42 +139,42 @@ history = model.fit(x_train, y_train,
                     shuffle=False,
                     epochs=10)
 
-#training-validation loss curve
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(1, len(loss) + 1)
-plt.figure(figsize=(7,5))
-plt.plot(epochs, loss, 'r', label='Training loss')
-plt.plot(epochs, val_loss, 'y', label='Validation loss')
-plt.title('Training and validation loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-plt.show()
+# #training-validation loss curve
+# loss = history.history['loss']
+# val_loss = history.history['val_loss']
+# epochs = range(1, len(loss) + 1)
+# plt.figure(figsize=(7,5))
+# plt.plot(epochs, loss, 'r', label='Training loss')
+# plt.plot(epochs, val_loss, 'y', label='Validation loss')
+# plt.title('Training and validation loss')
+# plt.xlabel('Epochs')
+# plt.ylabel('Loss')
+# plt.legend()
+# plt.show()
 
-#training-validation accuracy curve
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-plt.figure(figsize=(7,5))
-plt.plot(epochs, acc, 'r', label='Training Accuracy')
-plt.plot(epochs, val_acc, 'y', label='Validation Accuracy')
-plt.title('Training and validation accuracies')
-plt.xlabel('Epochs')
-plt.ylabel('IoU')
-plt.legend()
-plt.show()
+# #training-validation accuracy curve
+# acc = history.history['accuracy']
+# val_acc = history.history['val_accuracy']
+# plt.figure(figsize=(7,5))
+# plt.plot(epochs, acc, 'r', label='Training Accuracy')
+# plt.plot(epochs, val_acc, 'y', label='Validation Accuracy')
+# plt.title('Training and validation accuracies')
+# plt.xlabel('Epochs')
+# plt.ylabel('IoU')
+# plt.legend()
+# plt.show()
 
-#training-validation IoU curve
-iou_coef = history.history['IoU_coef']
-val_iou_coef = history.history['val_IoU_coef']
-plt.figure(figsize=(7,5))
-plt.plot(epochs, iou_coef, 'r', label='Training IoU')
-plt.plot(epochs, val_iou_coef, 'y', label='Validation IoU')
-plt.title('Training and validation IoU coefficients')
-plt.xlabel('Epochs')
-plt.ylabel('IoU')
-plt.legend()
-plt.show()
+# #training-validation IoU curve
+# iou_coef = history.history['IoU_coef']
+# val_iou_coef = history.history['val_IoU_coef']
+# plt.figure(figsize=(7,5))
+# plt.plot(epochs, iou_coef, 'r', label='Training IoU')
+# plt.plot(epochs, val_iou_coef, 'y', label='Validation IoU')
+# plt.title('Training and validation IoU coefficients')
+# plt.xlabel('Epochs')
+# plt.ylabel('IoU')
+# plt.legend()
+# plt.show()
 
 #save model
 model.save('Veins_Trained_models/Veins_Attention_Unet_150epochs.hdf5')
